@@ -1,7 +1,5 @@
 <?php
 
-// if (!isset($eol))
-//     $eol = '<br/>';
 
 class Manager {
     // attributes
@@ -30,59 +28,125 @@ class Manager {
     }
 
     // method for setting keys with values
-    public function set($table, $child, $data) {
+    public function set($table, $child, $data = null) {
         // sanitize input/error handle
         $db = $this->database;
         if (!is_string($table))
-            $this->fail("Function set requires first parameter (table name) to be of type string");
-        if (!is_string($child))
-            $this->fail("Function set requires second parameter (child ID) to be of type string");
-        if (!is_array($data))
-            $this->fail("Function set requires third parameter (data) to be of type array");
+            return $this->fail("Function set requires first parameter (table name) to be of type string");
         $table = $db->real_escape_string($table);
+        if (!is_string($child))
+            return $this->fail("Function set requires second parameter (child ID) to be of type string");
         $child = $db->real_escape_string($child);
-        // check if table exists
-        if (!$sql = $db->prepare("SHOW TABLES LIKE '$table'"))
+        if (!is_array($data))
+            $this->warn("Function set prefers third parameter (data) to be of type array");
+        $nullData = ($data == null || !is_array($data) || count($data) <= 0);
+
+        // create table with id column if it does not exist
+        if (($sql = $db->prepare("CREATE TABLE IF NOT EXISTS `$table` (id varchar(255))")) === false)
             return $this->fail("Could not prepare statement [$db->error]");
-        if (!$sql->execute())
+        if ($sql->execute() === false)
+            return $this->fail("Could not run query [$sql->error]");
+
+        // check if each column exists
+        $updates = '';
+        if (!$nullData) {
+            $newColumns = '';
+            foreach ($data as $attribute => $value) {
+                $attribute = $db->real_escape_string($attribute);
+                $data[$attribute] = $db->real_escape_string($value);
+                if (!$sql = $db->prepare("SHOW COLUMNS FROM `$table` LIKE '$attribute'"))
+                    return $this->fail("Could not prepare statement [$db->error]");
+                if (!$sql->execute())
+                    return $this->fail("Could not run query [$sql->error]");
+                $result = $sql->get_result();
+                $num_rows = $result->num_rows;
+                $result->free();
+                // prepare to add column if not exists
+                if ($num_rows <= 0) $newColumns .= "ADD $attribute varchar(255), ";
+                // prepare update attributes to use later
+                $updates .= ",$attribute=?";
+            }
+            // add missing columns to table
+            if (strlen($newColumns) > 1) {
+                if (!$sql = $db->prepare("ALTER TABLE `$table` " . substr($newColumns, 0, strlen($newColumns) - 2)))
+                    return $this->fail("Could not prepare statement [$db->error]");
+                if (!$sql->execute())
+                    return $this->fail("Could not run query [$sql->error]");
+            }
+        }
+
+        // check if entry exists
+        if (($sql = $db->prepare("SELECT * FROM `$table` WHERE id=?")) === false)
+            return $this->fail("Could not prepare statement [$db->error]");
+        $sql->bind_param('s', $child);
+        if ($sql->execute() === false)
             return $this->fail("Could not run query [$sql->error]");
         $result = $sql->get_result();
         $num_rows = $result->num_rows;
         $result->free();
-        // if table does not exist
+        // if entry does not exist, create new entry
         if ($num_rows <= 0) {
-            // create table with new column
-            if (($sql = $db->prepare("CREATE TABLE IF NOT EXISTS `$table` (id varchar(255))")) === false)
+            if (($sql = $db->prepare("INSERT INTO `$table` (id) VALUES (?)")) === false)
                 return $this->fail("Could not prepare statement [$db->error]");
+            $sql->bind_param('s', $child);
             if ($sql->execute() === false)
                 return $this->fail("Could not run query [$sql->error]");
         }
-        // check if table has column
-        foreach ($data as $attribute => $value) {
-            $attribute = $db->real_escape_string($attribute);
-            $value = $db->real_escape_string($value);
-            if (!$sql = $db->prepare("SHOW COLUMNS FROM '$table' LIKE '$attribute'"))
-                return $this->fail("Could not prepare statement [$db->error]");
-            if (!$sql->execute())
-                return $this->fail("Could not run query [$sql->error]");
-            $result = $sql->get_result();
-            $num_rows = $result->num_rows;
-            $result->free();
-            if ($num_rows <= 0) {
 
-            }
+        // add values to table if given
+        if (!$nullData && strlen($updates) > 0) {
+            $updates = substr($updates, 1);
+            $types = str_pad('', count($data) + 1, 's');
+            $bind_params = array_merge([$types], array_values($data), [$child]);
+            for ($i = 0; $i < count($bind_params); $i++)
+                $bind_params[$i] = &$bind_params[$i];
+            if (($sql = $db->prepare("UPDATE `$table` SET $updates WHERE id=?")) === false)
+                return $this->fail("Could not prepare statement [$db->error]");
+            call_user_func_array([$sql, 'bind_param'], $bind_params);
+            if ($sql->execute() === false)
+                return $this->fail("Could not run query [$sql->error]");
         }
 
-        // if (($sql = $db->prepare("INSERT INTO `main` (node, content) VALUES (?, ?)")) === false)
-        //     return $this->fail("Could not prepare statement [$db->error]");
-        // $sql->bind_param('ss', $node, $value);
-        // if ($sql->execute() === false)
-        //     return $this->fail("Could not run query [$sql->error]");
+        return true;
     }
 
     // method for getting values from keys
-    public function get($key) {
+    public function get($table, $child = null, $data = null) {
+        // sanitize input/error handle
+        $db = $this->database;
+        if (!is_string($table))
+            return $this->fail("Function get requires first parameter (table name) to be of type string");
+        $table = $db->real_escape_string($table);
+        if (!is_string($child))
+            $this->warn("Function get prefers second parameter (child ID) to be of type string");
+        else $child = $db->real_escape_string($child);
+        if (!is_array($data))
+            $this->warn("Function get prefers third parameter (data) to be of type array");
+        $nullChild = ($child == null || !is_string($child) || strlen($child) <= 0);
+        $nullData = ($data == null || !is_array($data) || count($data) <= 0);
 
+        // if child not provided, get table data
+        if ($nullChild) {
+            // if child true, get all table data (including child data)
+            if ($child === true) {
+
+            }
+            // if child null or false or other, just get IDs of table data
+            else {
+
+            }
+        }
+        // if child provided, get data of specific child in table
+        else {
+            // if data not provided, get all child data
+            if ($nullData) {
+
+            }
+            // if data provided, get specified data
+            else {
+
+            }
+        }
     }
 
     // method for getting logged errors
@@ -94,6 +158,7 @@ class Manager {
         return $this->errors[$numErrors - 1 - $num];
     }
 
+    // private convenience method for generating pseudo-random keys/IDs
     private function id($length = 10) {
         $key = '';
         $chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -104,7 +169,15 @@ class Manager {
 
     // private convenience method for logging errors
     private function fail($message) {
-        array_push($this->errors, "[MANAGER] Error - $message");
+        $e = new Exception();
+        array_push($this->errors, "[MANAGER] Error - $message - (" . $e->getTraceAsString() . ")");
+        return false;
+    }
+
+    // private convenience method for logging warnings
+    private function warn($message) {
+        $e = new Exception();
+        array_push($this->errors, "[MANAGER] Warning - $message - (" . $e->getTraceAsString() . ")");
         return false;
     }
 }

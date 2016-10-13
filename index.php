@@ -15,8 +15,19 @@ $db->connect();
     </head>
     <body>
         <?php
-            if (!$db->set('users', 'anuv', 'username', 'hello'))
-                echo $db->error(0);
+            if (!$db->set('users', 'anuv', [
+                'bob' => 'hello',
+                'joe' => 'hi',
+                'mum' => 'ay',
+                'yo' => 'YO',
+                'go' => 'go',
+                'ho' => 'hi'
+            ])) echo $db->error(0);
+
+            if (!$db->set('joe', 'bob')) echo $db->error(0);
+
+            if (!$db->set('users', 'bob')) echo $db->error(0);
+
         ?>
     </body>
 </html>
