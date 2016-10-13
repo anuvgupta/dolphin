@@ -1,6 +1,5 @@
 <?php
 
-
 class Manager {
     // attributes
     protected $database;
@@ -13,6 +12,8 @@ class Manager {
         $this->dbinfo = $dbinfo;
         $this->errors = [];
     }
+
+    // PUBLIC METHODS
 
     // method for connecting to mysql database
     public function connect() {
@@ -120,33 +121,76 @@ class Manager {
         if (!is_string($child))
             $this->warn("Function get prefers second parameter (child ID) to be of type string");
         else $child = $db->real_escape_string($child);
+        if (is_string($data))
+            $data = [$data];
         if (!is_array($data))
             $this->warn("Function get prefers third parameter (data) to be of type array");
         $nullChild = ($child == null || !is_string($child) || strlen($child) <= 0);
         $nullData = ($data == null || !is_array($data) || count($data) <= 0);
 
+        // check if table exists
+        if (!$sql = $db->prepare("SHOW TABLES LIKE '$table'"))
+            return $this->fail("Could not prepare statement [$db->error]");
+        if (!$sql->execute())
+            return $this->fail("Could not run query [$sql->error]");
+        $result = $sql->get_result();
+        $num_rows = $result->num_rows;
+        $result->free();
+        // if table does not exist
+        if ($num_rows <= 0)
+            return $this->fail("Table '$table' does not exist in database");
+
+        // data to return at the end
+        $response = [];
+
         // if child not provided, get table data
         if ($nullChild) {
             // if child true, get all table data (including child data)
-            if ($child === true) {
-
-            }
+            if ($child === true) $query = "SELECT * FROM `$table`";
             // if child null or false or other, just get IDs of table data
-            else {
-
+            else $query = "SELECT id FROM `$table`";
+            if (!$sql = $db->prepare($query))
+                return $this->fail("Could not prepare statement [$db->error]");
+            if (!$sql->execute())
+                return $this->fail("Could not run query [$sql->error]");
+            $result = $sql->get_result();
+            $num_rows = $result->num_rows;
+            if ($num_rows > 0) {
+                while (($row = $result->fetch_assoc()) !== null) {
+                    if ($child === true) array_push($response, $row);
+                    else array_push($response, $row['id']);
+                }
             }
+            $result->free();
         }
         // if child provided, get data of specific child in table
         else {
             // if data not provided, get all child data
-            if ($nullData) {
-
-            }
+            if ($nullData) $query = "SELECT * FROM `$table` WHERE id=?";
             // if data provided, get specified data
-            else {
-
+            else $query = "SELECT " . implode(',', $data) . " FROM `$table` WHERE id=?";
+            if (!$sql = $db->prepare($query))
+                return $this->fail("Could not prepare statement [$db->error]");
+            $sql->bind_param('s', $child);
+            if (!$sql->execute())
+                return $this->fail("Could not run query [$sql->error]");
+            $result = $sql->get_result();
+            $num_rows = $result->num_rows;
+            if ($num_rows == 1) {
+                if ($nullData) $response = $result->fetch_assoc();
+                elseif (count($data) == 1) $response = $result->fetch_assoc()[$data[0]];
+            } else {
+                while (($row = $result->fetch_assoc()) !== null) {
+                    if ($nullData) array_push($response, $row);
+                    elseif (count($data) == 1) array_push($response, $row[$data[0]]);
+                }
             }
         }
+
+        // final type checking
+        if (is_array($response) && count($response) == 0)
+            return null;
+        return $response;
     }
 
     // method for getting logged errors
@@ -157,6 +201,8 @@ class Manager {
             return false;
         return $this->errors[$numErrors - 1 - $num];
     }
+
+    // PRIVATE (CONVENIENCE) METHODS
 
     // private convenience method for generating pseudo-random keys/IDs
     private function id($length = 10) {
