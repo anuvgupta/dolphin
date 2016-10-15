@@ -1,2 +1,2 @@
-# mysql-manager
-PHP module for easily saving data in a MySQL database
+# dolphin
+PHP module for easily managing and manipulating a MySQL database with no SQL
