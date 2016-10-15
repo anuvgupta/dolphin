@@ -1,6 +1,6 @@
 <?php
 
-class Manager {
+class Dolphin {
     // attributes
     protected $database;
     protected $dbinfo;
@@ -216,14 +216,14 @@ class Manager {
     // private convenience method for logging errors
     private function fail($message) {
         $e = new Exception();
-        array_push($this->errors, "[MANAGER] Error - $message - (" . $e->getTraceAsString() . ")");
+        array_push($this->errors, "[DOLPHIN] Error - $message - (" . $e->getTraceAsString() . ")");
         return false;
     }
 
     // private convenience method for logging warnings
     private function warn($message) {
         $e = new Exception();
-        array_push($this->errors, "[MANAGER] Warning - $message - (" . $e->getTraceAsString() . ")");
+        array_push($this->errors, "[DOLPHIN] Warning - $message - (" . $e->getTraceAsString() . ")");
         return false;
     }
 }
