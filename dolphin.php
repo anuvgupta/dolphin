@@ -1,5 +1,13 @@
 <?php
 
+/*
+  dolphin v1.0
+  Copyright: (c) 2016 Anuv Gupta
+  File: dolphin.php (dolphin master)
+  Source: [https://github.com/anuvgupta/dolphin]
+  License: MIT [https://github.com/anuvgupta/dolphin/blob/master/LICENSE.md]
+*/
+
 class Dolphin {
     // attributes
     protected $database;
@@ -54,7 +62,18 @@ class Dolphin {
             $newColumns = '';
             foreach ($data as $attribute => $value) {
                 $attribute = $db->real_escape_string($attribute);
-                $data[$attribute] = $db->real_escape_string($value);
+                $type = 'varchar(255)';
+                if (is_array($value)) {
+                    if (!isset($value['type']))
+                        return $this->fail('Invalid value type format');
+                    else $type = $value['type'];
+                    if (!isset($value['val']))
+                        return $this->fail('Invalid value val format');
+                    else $value = $db->real_escape_string($value['val']);
+                }
+                if (is_string($value))
+                    $data[$attribute] = $db->real_escape_string($value);
+                else return $this->fail('Invalid value format');
                 if (!$sql = $db->prepare("SHOW COLUMNS FROM `$table` LIKE '$attribute'"))
                     return $this->fail("Could not prepare statement [$db->error]");
                 if (!$sql->execute())
@@ -63,7 +82,7 @@ class Dolphin {
                 $num_rows = $result->num_rows;
                 $result->free();
                 // prepare to add column if not exists
-                if ($num_rows <= 0) $newColumns .= "ADD $attribute varchar(255), ";
+                if ($num_rows <= 0) $newColumns .= "ADD $attribute $type, ";
                 // prepare update attributes to use later
                 $updates .= ",$attribute=?";
             }
@@ -111,6 +130,37 @@ class Dolphin {
         return true;
     }
 
+    // method for adding new entries with new IDs
+    public function push($table, $data = null) {
+        $db = $this->database;
+        $id = '';
+        $query = "SHOW TABLES LIKE '$table'";
+        if (!$sql = $db->prepare($query))
+            return $this->fail("Could not prepare statement [$db->error]");
+        if (!$sql->execute())
+            return $this->fail("Could not run query [$sql->error]");
+        $result = $sql->get_result();
+        $num_rows = $result->num_rows;
+        $result->free();
+        if ($num_rows > 0) {
+            while (true) {
+                $id = $this->id();
+                $query = "SELECT id FROM `$table` WHERE id=?";
+                if (!$sql = $db->prepare($query))
+                    return $this->fail("Could not prepare statement [$db->error]");
+                $sql->bind_param('s', $id);
+                if (!$sql->execute())
+                    return $this->fail("Could not run query [$sql->error]");
+                $result = $sql->get_result();
+                $num_rows = $result->num_rows;
+                if ($num_rows <= 0) break;
+            }
+        } else $id = $this->id();
+        if ($this->set($table, $id, $data) === true)
+            return $id;
+        else return false;
+    }
+
     // method for getting values from keys
     public function get($table, $child = null, $data = null) {
         // sanitize input/error handle
@@ -125,7 +175,7 @@ class Dolphin {
             $data = [$data];
         if (!is_array($data))
             $this->warn("Function get prefers third parameter (data) to be of type array");
-        $nullChild = ($child == null || !is_string($child) || strlen($child) <= 0);
+        $nullChild = ($child == null || (is_string($child) && strlen($child) <= 0));
         $nullData = ($data == null || !is_array($data) || count($data) <= 0);
 
         // check if table exists
@@ -142,7 +192,6 @@ class Dolphin {
 
         // data to return at the end
         $response = [];
-
         // if child not provided, get table data
         if ($nullChild) {
             // if child true, get all table data (including child data)
@@ -156,15 +205,18 @@ class Dolphin {
             $result = $sql->get_result();
             $num_rows = $result->num_rows;
             if ($num_rows > 0) {
-                while (($row = $result->fetch_assoc()) !== null) {
-                    if ($child === true) array_push($response, $row);
-                    else array_push($response, $row['id']);
+                if ($child === true) {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row);
+                } else {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row['id']);
                 }
             }
             $result->free();
         }
         // if child provided, get data of specific child in table
-        else {
+        elseif (is_string($child)) {
             // if data not provided, get all child data
             if ($nullData) $query = "SELECT * FROM `$table` WHERE id=?";
             // if data provided, get specified data
@@ -180,11 +232,53 @@ class Dolphin {
                 if ($nullData) $response = $result->fetch_assoc();
                 elseif (count($data) == 1) $response = $result->fetch_assoc()[$data[0]];
             } else {
-                while (($row = $result->fetch_assoc()) !== null) {
-                    if ($nullData) array_push($response, $row);
-                    elseif (count($data) == 1) array_push($response, $row[$data[0]]);
+                if (!$nullData && count($data) == 1) {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row[$data[0]]);
+                } else {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row);
                 }
             }
+            $result->free();
+        }
+        // if child is array, get children with specified data
+        elseif (is_array($child)) {
+            // loop through desired data
+            $where = '';
+            foreach ($child as $attribute => $expected)
+                $where .= "$attribute=? AND ";
+            $where = substr($where, 0, strlen($where) - 5);
+            // if data not provided, get all child data
+            if ($nullData) $query = "SELECT * FROM `$table` WHERE $where";
+            // if data provided, get specified data
+            else $query = "SELECT " . implode(',', $data) . " FROM `$table` WHERE $where";
+
+            $types = str_pad('', count($child), 's');
+            $bind_params = array_merge([$types], array_values($child));
+
+            for ($i = 0; $i < count($bind_params); $i++)
+                $bind_params[$i] = &$bind_params[$i];
+            if (($sql = $db->prepare($query)) === false)
+                return $this->fail("Could not prepare statement [$db->error]");
+            call_user_func_array([$sql, 'bind_param'], $bind_params);
+            if ($sql->execute() === false)
+                return $this->fail("Could not run query [$sql->error]");
+            $result = $sql->get_result();
+            $num_rows = $result->num_rows;
+            if ($num_rows == 1) {
+                if (!$nullData && count($data) == 1) $response = $result->fetch_assoc()[$data[0]];
+                else $response = $result->fetch_assoc();
+            } else {
+                if (!$nullData && count($data) == 1) {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row[$data[0]]);
+                } else {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row);
+                }
+            }
+            $result->free();
         }
 
         // final type checking
@@ -194,7 +288,7 @@ class Dolphin {
     }
 
     // method for getting logged errors
-    public function error($num) {
+    public function error($num = 0) {
         $numErrors = count($this->errors);
         if ($num === true) return $numErrors;
         elseif ($num < 0 || $num >= $numErrors)
