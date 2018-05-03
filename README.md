@@ -1,2 +1,3 @@
-# dolphin
-PHP module for easily managing and manipulating a MySQL database with no SQL
+# dolphin documentation
+Documentation for [dolphin](http://github.com/anuvgupta/dolphin)
+ 
