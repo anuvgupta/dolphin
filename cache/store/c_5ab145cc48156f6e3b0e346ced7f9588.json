@@ -1,0 +1,380 @@
+{
+    "name": "Dolphin\\Dolphin",
+    "line": 19,
+    "short_desc": "Dolphin main class",
+    "long_desc": "This class encapsulates the connection to a MySQL database and provides methods for interacting more easily with the database.",
+    "hint": null,
+    "tags": [],
+    "namespace": "Dolphin",
+    "file": "\/Applications\/XAMPP\/xamppfiles\/htdocs\/misc\/dolphin\/src\/dolphin.php",
+    "relative_file": null,
+    "hash": "67828e586aa2b0d9edee8d05addc4214e396f4f9",
+    "parent": null,
+    "modifiers": 0,
+    "is_trait": false,
+    "is_interface": false,
+    "aliases": [],
+    "errors": [],
+    "interfaces": [],
+    "traits": [],
+    "properties": [],
+    "methods": {
+        "__construct": {
+            "name": "__construct",
+            "line": 47,
+            "short_desc": "Constructor for a Dolphin",
+            "long_desc": "Checks if the MySQL extension is enabled and saves the provided database information.<br\/>\nIf the extension is not loaded, this error will be logged and can be checked with [Dolphin::error](#method_error).",
+            "hint": [
+                [
+                    "void",
+                    false
+                ]
+            ],
+            "hint_desc": "",
+            "tags": [],
+            "modifiers": 1,
+            "is_by_ref": "",
+            "exceptions": [],
+            "errors": [],
+            "parameters": {
+                "dbinfo": {
+                    "name": "dbinfo",
+                    "line": 47,
+                    "short_desc": "An associative array containing the MySQL database credentials and information\n```php\n$dbinfo_example = [\n    'host' => '127.0.0.1',  \/\/ the host on which the database server is running\n    'user' => 'username',   \/\/ username for a user that has access to the chosen database\n    'pass' => 'password',   \/\/ password for a user that has access to the chosen database\n    'name' => 'database'    \/\/ name of the chosen database\n];\n```",
+                    "long_desc": null,
+                    "hint": [
+                        [
+                            "array",
+                            false
+                        ]
+                    ],
+                    "tags": [],
+                    "modifiers": null,
+                    "default": null,
+                    "variadic": false,
+                    "is_by_ref": false
+                }
+            }
+        },
+        "__destruct": {
+            "name": "__destruct",
+            "line": 61,
+            "short_desc": "Destructor for a Dolphin",
+            "long_desc": "Calls [Dolphin::disconnect](#method_disconnect).",
+            "hint": [
+                [
+                    "void",
+                    false
+                ]
+            ],
+            "hint_desc": "",
+            "tags": [],
+            "modifiers": 1,
+            "is_by_ref": "",
+            "exceptions": [],
+            "errors": [],
+            "parameters": []
+        },
+        "connect": {
+            "name": "connect",
+            "line": 76,
+            "short_desc": "Connect to MySQL",
+            "long_desc": "Uses saved credentials\/info to connect to MySQL database.<br\/>\n**Must** be called before any other methods (besides [Dolphin::error](#method_error)).",
+            "hint": [
+                [
+                    "bool",
+                    false
+                ]
+            ],
+            "hint_desc": "Indicates the success of connecting to MySQL. If `false`, use [Dolphin::error](#method_error) to get the exact error.",
+            "tags": [],
+            "modifiers": 1,
+            "is_by_ref": "",
+            "exceptions": [],
+            "errors": [],
+            "parameters": []
+        },
+        "disconnect": {
+            "name": "disconnect",
+            "line": 94,
+            "short_desc": "Disconnect from MySQL",
+            "long_desc": "Disconnects from MySQL database, if connected. Fails silently.",
+            "hint": [
+                [
+                    "void",
+                    false
+                ]
+            ],
+            "hint_desc": "",
+            "tags": [],
+            "modifiers": 1,
+            "is_by_ref": "",
+            "exceptions": [],
+            "errors": [],
+            "parameters": []
+        },
+        "set": {
+            "name": "set",
+            "line": 167,
+            "short_desc": "Modify or create a child within a table",
+            "long_desc": "This method sets column values for a child row (specified by ID) within a table. <br\/>\nIf the table does not exist, it is created. If the child row does not exist within the table, it is created. <br\/>\nIf any one column does not exist within the table, it is added to the table (the type can be specified). <br\/>\n\n<br\/>**Uses of set**<br\/><br\/>\n\n<b>Use 1:<\/b> _Setting child data in a table with columns_ <br\/>\nEach key in this associative array represents a table column, and each value is the value to be set in that column for the given child's row.\n```php\n$data_example_1 = [\n     'username'   =>  'joesmith123',\n     'firstname'  =>  'Joe',\n     'lastname'   =>  'Smith',\n     'desc'       =>  'Hi! I like long walks on the beach.',\n     'age'        =>  26\n];\n$dolphin->set('users', 'd6h45', $data_example_1);\n```\nIf the columns exist, the child's columns are updated accordingly. <br\/>\n<br\/>\nHowever, in some cases, the columns specified may not exist. If a column does not exist, the table is first `ALTER`ed, adding the column with type `varchar(255)`.<br\/>\nYou can specify the type of a column in case it does not already exist and you want it to have a different type than `varchar(255)`.\n<br\/><br\/>\n\n<b>Use 2:<\/b> _Setting child data in a table while creating new columns with different data types_ <br\/>\nEach key in this associative array represents a table column, and each value is another associative array.<br\/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The value mapped to `val` is the value to be set in that column for the given child's row.<br\/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The value mapped to `type` is the MySQL type of the column, and if the column does not exist in the table, it will be created with this type.<br\/>\n```php\n$data_example_2 = [\n     'username'  => [\n         'val'   => 'joesmith123',\n         'type'  => 'varchar(100)' \/\/ perhaps I want usernames to be restricted to a shorter length\n     ],\n     'firstname' => 'Joe', \/\/ no specified type, because the default type is `varchar(255)`, or I know this column already exists\n     'lastname'  => [\n         'val'   => 'Smith',\n         'type'  => 'varchar(255)' \/\/ this is unnecessary, because the default type is `varchar(255)`\n     ],\n     'desc'      => [\n         'val'   => 'Hi! I like long walks on the beach.',\n         'type'  => 'text'\n     ],\n     'age'       => [\n         'val'   => 26,\n         'type'  => 'integer'\n     ],\n];\n$dolphin->set('users', 'd6h45', $data_example_2);\n```\n<br\/>\n<b>Use 3:<\/b> _Creating an empty child row_ <br\/>\n`Example 3: ` in some cases, the data parameter is `null`, or simply not passed (in which case it defaults to `null`).\nIn this case, if the child row does not exist, it is created. If it does exist, nothing happens. In future versions of Dolphin, this may change so that if the child row does exist, all of its attributes (columns) are cleared.\n```php\n$dolphin->set('users', 'd6h45', null);\n$dolphin->set('users', 'd6h45'); \/\/ the same thing\n```",
+            "hint": [
+                [
+                    "bool",
+                    false
+                ]
+            ],
+            "hint_desc": "Indicates success of the operation. If any one database operation fails, the method immediately returns `false` and logs the error; in this case, use [Dolphin::error](#method_error) to get the exact error.",
+            "tags": [],
+            "modifiers": 1,
+            "is_by_ref": "",
+            "exceptions": [],
+            "errors": [],
+            "parameters": {
+                "table": {
+                    "name": "table",
+                    "line": 167,
+                    "short_desc": "Name of the table to be modified. If the table does not exist, it will be `CREATE`d.",
+                    "long_desc": null,
+                    "hint": [
+                        [
+                            "string",
+                            false
+                        ]
+                    ],
+                    "tags": [],
+                    "modifiers": null,
+                    "default": null,
+                    "variadic": false,
+                    "is_by_ref": false
+                },
+                "child": {
+                    "name": "child",
+                    "line": 167,
+                    "short_desc": "ID of the child row of values to be set\/modified. If the child does not exist, it will be `INSERT`ed rather than `UPDATE`d.",
+                    "long_desc": null,
+                    "hint": [
+                        [
+                            "string",
+                            false
+                        ]
+                    ],
+                    "tags": [],
+                    "modifiers": null,
+                    "default": null,
+                    "variadic": false,
+                    "is_by_ref": false
+                },
+                "data": {
+                    "name": "data",
+                    "line": 167,
+                    "short_desc": "Technically optional. An associative array containing attributes of the child to set\/modify, and their corresponding values (as well as their corresponding types, if necessary). See the above method description for details on how to format.",
+                    "long_desc": null,
+                    "hint": [
+                        [
+                            "array",
+                            false
+                        ]
+                    ],
+                    "tags": [],
+                    "modifiers": null,
+                    "default": "null",
+                    "variadic": false,
+                    "is_by_ref": false
+                }
+            }
+        },
+        "push": {
+            "name": "push",
+            "line": 281,
+            "short_desc": "Add a new child with a unique ID to a table",
+            "long_desc": "This method creates a new child row with a unique ID within a table, setting column values for it as well.<br\/>\nThe ID of the child created is random, alphanumeric, and unique within the table; in other words, the new child's ID will be different from the IDs of every other child in the table.<br\/>\nThis method uses [Dolphin::set](#method_set), so if the table does not exist, it is created; and if any one column does not exist within the table, it is added to the table (the type can be specified).<br\/>",
+            "hint": [
+                [
+                    "mixed",
+                    false
+                ]
+            ],
+            "hint_desc": "The generated alphanumeric **string** ID of the newly created child; also indicates success of the operation.<br\/>\n              If any one database operation fails, the method immediately returns **bool** `false` (instead of returning the ID) and logs the error; in this case, use [Dolphin::error](#method_error) to get the exact error.",
+            "tags": [],
+            "modifiers": 1,
+            "is_by_ref": "",
+            "exceptions": [],
+            "errors": [],
+            "parameters": {
+                "table": {
+                    "name": "table",
+                    "line": 281,
+                    "short_desc": "Name of the table to be modified. If the table does not exist, it will be `CREATE`d.",
+                    "long_desc": null,
+                    "hint": [
+                        [
+                            "string",
+                            false
+                        ]
+                    ],
+                    "tags": [],
+                    "modifiers": null,
+                    "default": null,
+                    "variadic": false,
+                    "is_by_ref": false
+                },
+                "data": {
+                    "name": "data",
+                    "line": 281,
+                    "short_desc": "Technically optional. An associative array containing attributes of the new child, and their corresponding values (as well as their corresponding types, if necessary).<br\/>\n                     See the description of [Dolphin::set](#method_set) for a detailed explanation on how to format the `$data` array.",
+                    "long_desc": null,
+                    "hint": [
+                        [
+                            "array",
+                            false
+                        ]
+                    ],
+                    "tags": [],
+                    "modifiers": null,
+                    "default": "null",
+                    "variadic": false,
+                    "is_by_ref": false
+                },
+                "length": {
+                    "name": "length",
+                    "line": 281,
+                    "short_desc": "Optional. Specifies the length of the generated ID. Defaults to `10` characters.",
+                    "long_desc": null,
+                    "hint": [
+                        [
+                            "integer",
+                            false
+                        ]
+                    ],
+                    "tags": [],
+                    "modifiers": null,
+                    "default": "10",
+                    "variadic": false,
+                    "is_by_ref": false
+                }
+            }
+        },
+        "get": {
+            "name": "get",
+            "line": 477,
+            "short_desc": "Get data from a table based on child or query",
+            "long_desc": "This method retrieves data from a table. It can retrieve all the data in the table, or the data for a specific child row, or the data of all child rows matching a query.<br\/>\n\n<br\/>**Uses of get**<br\/><br\/>\n\n<b>Use 1:<\/b> _Get table data_ <br\/>\nGet all the data from a table. There are three options here - get an array the child IDs, get all the child data, or get specific columns from every child.<br\/><br\/>\n<u>Option 1<\/u>: Array of child IDs<br\/>\nSimply pass the table name.\n```php\n$child_ids = $dolphin->get('users');\nprint_r($child_ids);\n```\nOutput\n```php\nArray (\n    [0] => h6a3d\n    [1] => d8f8g\n    [2] => Eh8wPe58eN\n    [3] => efdJspQhY4\n    [4] => 1aauZTnZ5t\n)\n```\n<br\/>\n<u>Option 2<\/u>: Array of all child data<br\/>\nPass the table name, as well as `true` for the `$child` parameter.\n```php\n$children = $dolphin->get('users', true);\nprint_r($children);\n```\nOutput\n```php\nArray (\n    [h6a3d] => Array (\n            [id]         =>  h6a3d\n            [username]   =>  joesmith123\n            [firstname]  =>  Joe\n            [lastname]   =>  Smith\n            [desc]       =>  Hi! I like long walks on the beach.\n            [age]        =>  26\n        )\n    [d8f8g] => Array (\n            [id]         =>  d8f8g\n            [username]   =>  johndoe456\n            [firstname]  =>  John\n            [lastname]   =>  Doe\n            [desc]       =>  My hobbies include pizza.\n            [age]        =>  22\n        )\n    [Eh8wPe58eN] => Array (\n            [id]         =>  Eh8wPe58eN\n            [username]   =>  rythorne234\n            [firstname]  =>  Ryan\n            [lastname]   =>  Thorne\n            [desc]       =>  Hi, I'm Ryan, let's hang!\n            [age]        =>  15\n        )\n    [efdJspQhY4] => Array (\n            [id]         =>  efdJspQhY4\n            [username]   =>  shelbyg789\n            [firstname]  =>  Shelby\n            [lastname]   =>  Griffin\n            [desc]       =>  Always smiling\n            [age]        =>  18\n        )\n    [1aauZTnZ5t] => Array (\n            [id]         =>  1aauZTnZ5t\n            [username]   =>  jdub44\n            [firstname]  =>  John\n            [lastname]   =>  Washington\n            [desc]       =>  Chillin' out maxin' relaxin' all cool\n            [age]        =>  18\n        )\n)\n```\n<br\/>\n<u>Option 3<\/u>: Array of specific columns of every child<br\/>\nPass the table name, `true` for the `$child` parameter, and an array of column names for `$data`.\n```php\n$children_names = $dolphin->get('users', true, ['firstname', 'lastname']);\nprint_r($children_names);\n```\nOutput\n```php\nArray (\n    [h6a3d] => Array (\n            [id]         =>  h6a3d\n            [firstname]  =>  Joe\n            [lastname]   =>  Smith\n        )\n    [d8f8g] => Array (\n            [id]         =>  d8f8g\n            [firstname]  =>  John\n            [lastname]   =>  Doe\n        )\n    [Eh8wPe58eN] => Array (\n            [id]         =>  Eh8wPe58eN\n            [firstname]  =>  Ryan\n            [lastname]   =>  Thorne\n        )\n    [efdJspQhY4] => Array (\n            [id]         =>  efdJspQhY4\n            [firstname]  =>  Shelby\n            [lastname]   =>  Griffin\n        )\n    [1aauZTnZ5t] => Array (\n            [id]         =>  1aauZTnZ5t\n            [firstname]  =>  John\n            [lastname]   =>  Washington\n        )\n)\n```\n<br\/>\n\n<b>Use 2:<\/b> _Get child data_ <br\/>\nGet a specific child's data from the table. There are two options here - get get all of the child's data, or get specific columns from the child.<br\/><br\/>\n<u>Option 1<\/u>: All of the child's data<br\/>\nPass the table name, as well as the child ID for the `$child` parameter\n```php\n$child_data = $dolphin->get('users', 'h6a3d');\nprint_r($child_data);\n```\nOutput\n```php\nArray\n(\n    [id]         =>  h6a3d\n    [username]   =>  joesmith123\n    [firstname]  =>  Joe\n    [lastname]   =>  Smith\n    [desc]       =>  Hi! I like long walks on the beach.\n    [age]        =>  26\n)\n```\n<br\/>\n<u>Option 2<\/u>: Specific columns of the child's data<br\/>\nPass the table name, the child ID for `$child`, and an array of column names for `$data`.\n```php\n$child_name = $dolphin->get('users', 'h6a3d', ['firstname', 'lastname']);\nprint_r($child_name);\n```\nOutput\n```php\nArray\n(\n    [id]         =>  h6a3d\n    [firstname]  =>  Joe\n    [lastname]   =>  Smith\n)\n```\n<br\/>\n\n<b>Use 3:<\/b> _Run query_ <br\/>\nThe query building capabilities are mediocre and inadequate at best, so it's best to use actual MySQL database functions to run your own queries.<br\/>\nSee the code itself if you want to understand how it works.\n<br\/>",
+            "hint": [
+                [
+                    "mixed",
+                    false
+                ]
+            ],
+            "hint_desc": "The result set, as an associative **array**. See each use case above for details. If the result set is empty, the method returns **null**.<br\/>\n              If any one database operation fails, the method immediately returns **bool** `false` (instead of an array or null) and logs the error; in this case, use [Dolphin::error](#method_error) to get the exact error.",
+            "tags": [],
+            "modifiers": 1,
+            "is_by_ref": "",
+            "exceptions": [],
+            "errors": [],
+            "parameters": {
+                "table": {
+                    "name": "table",
+                    "line": 477,
+                    "short_desc": "Name of the table from which to retrieve data.",
+                    "long_desc": null,
+                    "hint": [
+                        [
+                            "string",
+                            false
+                        ]
+                    ],
+                    "tags": [],
+                    "modifiers": null,
+                    "default": null,
+                    "variadic": false,
+                    "is_by_ref": false
+                },
+                "child": {
+                    "name": "child",
+                    "line": 477,
+                    "short_desc": "Technically optional. **String** ID of the child row of values to be retrieved, or **bool** `true` to get all child data within a table. Or, an array for structuring queries.",
+                    "long_desc": null,
+                    "hint": [
+                        [
+                            "string",
+                            false
+                        ],
+                        [
+                            "bool",
+                            false
+                        ],
+                        [
+                            "array",
+                            false
+                        ]
+                    ],
+                    "tags": [],
+                    "modifiers": null,
+                    "default": "null",
+                    "variadic": false,
+                    "is_by_ref": false
+                },
+                "data": {
+                    "name": "data",
+                    "line": 477,
+                    "short_desc": "Technically optional. Array containing names of columns to retrieve.",
+                    "long_desc": null,
+                    "hint": [
+                        [
+                            "array",
+                            false
+                        ]
+                    ],
+                    "tags": [],
+                    "modifiers": null,
+                    "default": "null",
+                    "variadic": false,
+                    "is_by_ref": false
+                }
+            }
+        },
+        "error": {
+            "name": "error",
+            "line": 708,
+            "short_desc": "Get logged errors",
+            "long_desc": "Returns most recent error, or specified error, or number of errors, depending on the parameter provided.\n\n<br\/>**Uses of error**<br\/><br\/>\n\n<b>Use 1:<\/b> _Get most recent error_ <br\/>\nCall the method with no arguments to get the most recent error as a string.\nThe method will return `false` if there are no logged errors.\n```php\n$last_error = $dolphin->error();\nif ($last_error) echo \"The last error: $last_error\";\nelse echo \"No errors\";\n```\n<br\/>\n\n<b>Use 2:<\/b> _Get a specific error_ <br\/>\nPass the integer ID of the desired error (the most recently error logged has an ID of `0`, and each previous error has an incremented ID) to get that error as a string.\nReturns `false` if the error is not found.\n```php\n$error_6 = $dolphin->error(6);\nif ($error_6) echo \"The sixth error: $error_6\";\nelse echo \"Error 6 does not exist\";\n```\n<br\/>\n\n<b>Use 3:<\/b> _Get total number of errors_ <br\/>\nPass `true` to get the total number of errors. Useful for calculating ID of specific errors.\n```php\n$num_errors = $dolphin->error(true);\necho \"Dolphin has logged $num_errors error(s)\" . PHP_EOL;\nif ($num_errors > 1) echo \"The second-to-last error: \" . $dolphin->error($num_errors - 2);\nelse echo \"Dolphin has only logged one error\";\n```",
+            "hint": [
+                [
+                    "mixed",
+                    false
+                ]
+            ],
+            "hint_desc": "Total **integer** number of errors, or error **string** matching the given ID (or of the most recent error), or **bool** `false` if error requested is not found.",
+            "tags": [],
+            "modifiers": 1,
+            "is_by_ref": "",
+            "exceptions": [],
+            "errors": [],
+            "parameters": {
+                "num": {
+                    "name": "num",
+                    "line": 708,
+                    "short_desc": "Technically optional. Indicates **integer** ID of error to retrieve (leave blank for most recent error), or **bool** `true` to retrieve total number of errors logged.",
+                    "long_desc": null,
+                    "hint": [
+                        [
+                            "integer",
+                            false
+                        ],
+                        [
+                            "bool",
+                            false
+                        ]
+                    ],
+                    "tags": [],
+                    "modifiers": null,
+                    "default": "0",
+                    "variadic": false,
+                    "is_by_ref": false
+                }
+            }
+        }
+    },
+    "constants": []
+}
